@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>dumpster</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <main x-data="{}">
+        <h1 data-main-title>🚽 D U M P S T E R</h1>
+
+        <div data-upload-drop x-cloak>📥</div>
+
+        <footer>
+            <a href="/panel.html">Panel 🚀</a>
+            &bull;
+            <a href="//github.com/cvgore/dumpster" target="_blank" rel="noopener noreferer">Repo 🐞</a>
+        </footer>
+    </main>
+
+    <script src="/app.js"></script>
+    <script>
+        (function initApp() {
+            const flow = new Flow({
+                target: '/upload',
+                testChunks: false,
+            });
+
+            const dropTarget = document.querySelector('[data-upload-drop]');
+
+            flow.assignDrop(dropTarget);
+            flow.assignBrowse(dropTarget);
+
+            flow.on('filesSubmitted', () =>{
+                flow.upload();
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[package]
+name = "dumpster"
+version = "0.1.0"
+authors = ["cvgore <kacper@cvgo.re>"]
+edition = "2018"
+
+[dependencies]
+rocket = "0.5.0-rc.1"
+log = "0.4"
+env_logger = "0.9"
+serde = "1.0"
+toml = "0.5"
+
+[dependencies.rust-crypto]
+version = "0.2"
+
+[dependencies.tokio]
+version = "1.10"
+default-features = false
+features = ["fs", "rt-multi-thread", "io-util", "macros", "parking_lot"]
