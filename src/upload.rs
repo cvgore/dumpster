@@ -1,10 +1,12 @@
 use std::error::Error;
 
+use rocket::{Data, State};
 use rocket::data::Capped;
 use rocket::form::{DataField, Form, Strict};
 use rocket::fs::TempFile;
-use rocket::Data;
 use rocket::http::Status;
+
+use crate::AppState;
 
 #[derive(FromForm)]
 pub struct UploadData<'r> {
@@ -29,6 +31,7 @@ pub struct UploadData<'r> {
     flow_identifier: &'r str,
 
     #[field(validate = len(1..))]
+    #[field(validate = omits(['.']))]
     #[field(name = "flowFilename")]
     flow_filename: &'r str,
 
@@ -44,10 +47,16 @@ pub struct UploadData<'r> {
 }
 
 #[post("/", data = "<upload_data>")]
-pub fn upload(upload_data: Form<Strict<UploadData<'_>>>) -> Status {
-    if upload_data.file.persist_to().await {
-
+pub fn upload(form: Form<Strict<UploadData<'_>>>, state: &State<AppState>) -> Status {
+    if !form.flow_filename.contains(["//", "\\", "..", "<", ">", ":", "\"", "|", "?", "*", "\0"]) {
+        Status::BadRequest("illegal chars in filename")
     }
+
+    if form.flow_filename.len() > 60 {
+        Status::BadRequest("filename too long")
+    }
+
+    form.file.persist_to(format!("storage/upload_chunks/{}.{}.part", form.flow_filename, form.flow_chunk_number));
 
     Status::Ok
 }

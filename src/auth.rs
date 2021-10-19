@@ -1,70 +1,81 @@
-use serde::Deserialize;
 use std::fs;
-use rocket::http::ext::IntoCollection;
-use rocket::form::validate::Contains;
 use std::fs::FileType;
-use std::io::{Write, Read};
-use crypto::sha2::Digest;
-use crypto::sha2::digest::generic_array::functional::FunctionalSequence;
-use crypto::sha2::digest::DynDigest;
-use crypto::sha2;
-use crate::config::Config;
+use std::io::{Read, Write};
 
-#[derive(Deserialize)]
-pub struct User<'u> {
-    username: &'u str,
-    password: Option<&'u str>,
-    hashed_password: Option<&'u str>,
+use rocket::form::FromForm;
+use rocket::form::validate::Contains;
+use rocket::http::ext::IntoCollection;
+use serde::{Deserialize, Serialize};
 
-    prefixes: Vec<&'u str>,
+#[derive(Deserialize, Serialize)]
+pub struct User {
+    username: String,
+    password: Option<String>,
+
+    file_prefixes: Vec<String>,
+
+    hashed_password: Option<String>,
 }
 
-impl<'u> User {
-    pub fn username(&self) -> &'u str {
-        self.username
+impl User {
+    pub fn username(&self) -> &String {
+        &self.username
     }
 
-    pub fn check_password(&self, unknown: impl ToString) -> bool {
+    pub fn check_password(&self, unknown: &str) -> bool {
+        use argon2::{Argon2, password_hash::{PasswordVerifier, PasswordHash}};
+
         if self.hashed_password.is_none() {
             return false;
         }
 
-        let known_string = self.hashed_password.unwrap().as_bytes();
+        let argon2 = Argon2::default();
+        let parsed_hash = {
+            let hashed = self.hashed_password.as_ref().unwrap();
 
-        crypto::util::fixed_time_eq(
-            known_string, unknown.as_bytes()
-        )
-    }
-
-    pub fn prefixes(&self) -> &Vec<&'u str> {
-        &self.prefixes
-    }
-
-    pub fn hash_password(&mut self, salt: impl ToString) {
-        if self.password.is_none() {
-            return;
-        }
-
-        let data = {
-            let mut digest = crypto::sha2::Sha256::new();
-            digest.update(self.password.unwrap().as_bytes());
-            digest.update(salt.as_bytes());
-
-            digest.finalize()
+            PasswordHash::new(hashed.as_str()).unwrap()
         };
 
-        let hashed_password = data.as_slice()
-            .bytes()
-            .flat_map(|x| format!("{:x}", x.unwrap()))
-            .collect::<String>();
+        argon2.verify_password(unknown.as_bytes(), &parsed_hash).is_ok()
+    }
 
-        self.hashed_password = Some(&hashed_password);
+    pub fn prefixes(&self) -> &Vec<String> {
+        &self.file_prefixes
+    }
+
+    pub fn hash_password(&mut self) -> bool {
+        use argon2::{
+            password_hash::{
+                rand_core::OsRng,
+                PasswordHash, PasswordHasher, SaltString,
+            },
+            Argon2,
+        };
+
+        if self.password.is_none() {
+            return false;
+        }
+
+        let salt = SaltString::generate(&mut OsRng);
+
+        let argon2 = Argon2::default();
+
+        let password_hash = {
+            let plaintxt = self.password.as_ref().unwrap();
+
+            argon2.hash_password(plaintxt.as_bytes(), &salt).unwrap().to_string()
+        };
+
+        self.hashed_password = Some(password_hash);
         self.password = None;
+
+        true
     }
 }
 
-pub fn get_users<'c>(cfg: &'c Config) -> Vec<User<'c>> {
-    let users_files = fs::read_dir("storage/users")?
+pub fn get_users() -> Vec<User> {
+    fs::read_dir("storage/users")
+        .expect("couldn't exec storage/users folder")
         .filter_map(|maybe_file| {
             if let Ok(file) = maybe_file {
                 if !file.file_type().unwrap().is_file() {
@@ -72,51 +83,63 @@ pub fn get_users<'c>(cfg: &'c Config) -> Vec<User<'c>> {
                     return None;
                 }
 
-                if let Err(why) = file.file_name().to_str() {
-                    log::warn!("error while transmuting file name to string: {}", why);
+                if let None = file.file_name().to_str() {
+                    log::warn!("error while transmuting file name to string");
                     return None;
                 }
 
-                let file_name = file.file_name().to_str().unwrap();
+                let file_name = {
+                    let os_name = file.file_name();
+                    let name = os_name.to_str();
+
+                    name.unwrap().to_string()
+                };
 
                 if !file_name.starts_with('.') && file_name.ends_with(".toml") {
                     return Some(file);
                 }
             }
 
-            log::warn!("users dir entry invalid, skipping");
+            log::debug!("users dir entry invalid, skipping");
 
             None
-        });
+        })
+        .filter_map(|file| {
+            let file_contents = fs::read_to_string(file.path());
 
-    users_files.flat_map(|file| {
-        let data = fs::read_to_string(file.path());
+            if let Err(why) = &file_contents {
+                log::warn!("couldn't read user file data ({:?}): {}", file.path(), why);
+                return None;
+            }
 
-        if let Err(why) = data {
-            log::warn!("couldn't read user file data ({:?}): {}", file.path(), why);
-            // return None;
-        }
+            let data = {
+                let file_contents = file_contents.unwrap();
 
-        let data = {
-            let data = data.unwrap();
-            toml::from_str::<User>(data.as_str())
-        };
+                toml::from_str::<User>(&file_contents)
+            };
 
-        if let Err(why) = data {
-            log::warn!("invalid user file schema ({:?}): {}", file.path(), why);
-            // return None;
-        }
+            if let Err(why) = &data {
+                log::warn!("invalid user file schema ({:?}): {}", file.path(), why);
+                return None;
+            }
 
-        let mut data = data.unwrap();
+            let (data, hashed_recently) = {
+                let mut data = data.unwrap();
 
-        data.hash_password(cfg.secret_key);
+                let hashed_recently = data.hash_password();
 
-        {
-            let serialized_data = toml::to_string(&data).unwrap();
-            log::info!("writing hashed password to {:?}", file.path());
-            fs::write(file.path(), serialized_data);
-        }
+                (data, hashed_recently)
+            };
 
-        data
-    }).collect()
+            if hashed_recently {
+                let serialized_data = toml::to_string(&data).unwrap();
+                log::info!("writing hashed password to {:?}", file.path());
+                fs::write(file.path(), serialized_data);
+            } else {
+                log::debug!("skipped already hashed password in file {:?}", file.path());
+            }
+
+            Some(data)
+        })
+        .collect()
 }
