@@ -930,20 +930,48 @@ main {
     height: 100vh;
     padding: .5rem;
 }
-
 [data-main-title] {
     text-align: center;
 }
 [data-upload-drop] {
-    font-size: 10rem;
     display: flex;
     justify-content: center;
     align-items: center;
     user-select: none;
+    position: relative;
+}
+[data-upload-icon] {
+    font-size: 10rem;
+}
+[data-uploading] {
+    animation: bump 1s infinite ease-in-out;
+}
+[data-file] {
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+}
+[data-file]:disabled {
+    cursor: not-allowed;
 }
 footer {
     text-align: center;
 }
-[x-cloak] {
-    visibility: hidden;
+
+@keyframes bump {
+    from {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3rem);
+    }
+    to {
+        transform: translateY(0);
+    }
 }

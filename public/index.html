@@ -9,10 +9,13 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main x-data="{}">
+    <main>
         <h1 data-main-title>🚽 D U M P S T E R</h1>
 
-        <div data-upload-drop x-cloak>📥</div>
+        <div data-upload-drop >
+            <span data-upload-icon>📥</span>
+            <input type="file" data-file>
+        </div>
 
         <footer>
             <a href="/panel.html">Panel 🚀</a>
@@ -22,22 +25,5 @@
     </main>
 
     <script src="/app.js"></script>
-    <script>
-        (function initApp() {
-            const flow = new Flow({
-                target: '/upload',
-                testChunks: false,
-            });
-
-            const dropTarget = document.querySelector('[data-upload-drop]');
-
-            flow.assignDrop(dropTarget);
-            flow.assignBrowse(dropTarget);
-
-            flow.on('filesSubmitted', () =>{
-                flow.upload();
-            });
-        })();
-    </script>
 </body>
 </html>

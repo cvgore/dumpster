@@ -10,53 +10,40 @@ use crate::AppState;
 
 #[derive(FromForm)]
 pub struct UploadData<'r> {
-    #[field(validate = range(1..))]
-    #[field(name = "flowChunkNumber")]
-    flow_chunk_number: u16,
-
-    #[field(validate = range(1..))]
-    #[field(name = "flowChunkSize")]
-    flow_chunk_size: u32,
-
-    #[field(validate = range(1..))]
-    #[field(name = "flowCurrentChunkSize")]
-    flow_current_chunk_size: u32,
-
-    #[field(validate = range(1..))]
-    #[field(name = "flowTotalSize")]
-    flow_total_size: u64,
-
-    #[field(validate = len(1..))]
-    #[field(name = "flowIdentifier")]
-    flow_identifier: &'r str,
-
-    #[field(validate = len(1..))]
-    #[field(validate = omits(['.']))]
-    #[field(name = "flowFilename")]
-    flow_filename: &'r str,
-
-    #[field(validate = len(1..))]
-    #[field(name = "flowRelativePath")]
-    flow_relative_path: &'r str,
-
-    #[field(validate = range(1..))]
-    #[field(name = "flowTotalChunks")]
-    flow_total_chunks: u16,
-
-    file: TempFile<'r>,
+    file: TempFile<'r>
 }
 
-#[post("/", data = "<upload_data>")]
-pub fn upload(form: Form<Strict<UploadData<'_>>>, state: &State<AppState>) -> Status {
-    if !form.flow_filename.contains(["//", "\\", "..", "<", ">", ":", "\"", "|", "?", "*", "\0"]) {
-        Status::BadRequest("illegal chars in filename")
+const UNSAFE_CHARS: [&str; 11] = ["//", "\\", "..", "<", ">", ":", "\"", "|", "?", "*", "\0"];
+
+fn contains_unsafe_chars(name: &str) -> bool {
+    for ch in UNSAFE_CHARS {
+        if name.contains(ch) {
+            return true;
+        }
     }
 
-    if form.flow_filename.len() > 60 {
-        Status::BadRequest("filename too long")
+    false
+}
+
+#[post("/", data = "<form>")]
+pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> Status {
+    let file = &mut form.file;
+
+    if file.name().is_none() {
+        return Status::BadRequest;
     }
 
-    form.file.persist_to(format!("storage/upload_chunks/{}.{}.part", form.flow_filename, form.flow_chunk_number));
+    let filename = file.name().unwrap().to_string();
+
+    if contains_unsafe_chars(&filename) {
+        return Status::BadRequest;
+    }
+
+    if filename.len() > 64 {
+        return Status::BadRequest;
+    }
+
+    file.persist_to(format!("storage/upload/{}", &filename));
 
     Status::Ok
 }

@@ -10,7 +10,7 @@ secret_key = "hPRYyVRiMyxpw5sBB1XeCMN1kFsDCqKvBi2QJxBVHQk="
 
 [default.limits]
 forms = "64 kB"
-file = "5 MiB" # 1x value
-data-form = "10 MiB" # 2x value - MAKE IT AT LEAST 2 times bigger than file
+file = "10 MiB"
+data-form = "10 MiB"
 
 

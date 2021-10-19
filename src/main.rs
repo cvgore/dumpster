@@ -4,6 +4,7 @@ extern crate rocket;
 use rocket::data::{Limits, ToByteUnit};
 use rocket::fs::FileServer;
 use rocket::fs::relative;
+
 use crate::auth::{get_users, User};
 
 mod upload;
@@ -24,8 +25,13 @@ fn unprocessable_entity() -> &'static str {
     "🍆 422 Invalid Request"
 }
 
+#[catch(400)]
+fn bad_request() -> &'static str {
+    "🍆 400 Fcked-up Request"
+}
+
 pub struct AppState {
-    users: Vec<User>
+    users: Vec<User>,
 }
 
 #[launch]
@@ -37,6 +43,6 @@ fn rocket() -> _ {
             users: get_users()
         })
         .mount("/upload", routes![upload::upload])
-        .register("/", catchers![not_found, payload_too_large, unprocessable_entity])
+        .register("/", catchers![not_found, payload_too_large, unprocessable_entity, bad_request])
         .mount("/", FileServer::from(relative!("public")))
 }
