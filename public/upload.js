@@ -3,21 +3,18 @@
 
     const ICON_UPLOAD = '📤';
     const ICON_DOWNLOAD = '📥';
-    const STR_DROP_FILE = 'Drop file here or select one';
+    const STR_DROP_FILE = 'Drop file here or select one to upload';
     const UPLOAD_SUCCESS = 0;
     const UPLOAD_ABORT = 1;
-    const UPLOAD_TIMEOUT = 2;
     const UPLOAD_ERROR = 3;
     const STRMAP_FILE_STATE = {
         [UPLOAD_SUCCESS]: 'File :f uploaded successfully',
         [UPLOAD_ABORT]: 'File :f upload cancelled',
-        [UPLOAD_TIMEOUT]: 'File :f upload timed out',
         [UPLOAD_ERROR]: 'File :f failed to upload, see logs'
     };
     const ICONMAP_FILE_STATE = {
         [UPLOAD_SUCCESS]: '✔',
         [UPLOAD_ABORT]: '🟥',
-        [UPLOAD_TIMEOUT]: '⏰',
         [UPLOAD_ERROR]: '❌'
     };
     
@@ -37,6 +34,7 @@
         dropCont.removeAttribute('data-uploading');
         dropIcon.textContent = ICON_DOWNLOAD;
         uploadText.textContent = STR_DROP_FILE;
+        fileInput.value = '';
     }
 
     function setReadyToUpload(state) {
@@ -83,12 +81,8 @@
             setReadyToUpload(UPLOAD_ABORT);
         });
 
-        req.upload.addEventListener('timeout', function onUploadTimeout() {
-            setReadyToUpload(UPLOAD_TIMEOUT);
-        });
-
         req.open('POST', '/upload', true);
-        req.timeout = 3    000;
+
         req.send(formData);
     });
 

@@ -933,7 +933,7 @@ main {
 [data-main-title] {
     text-align: center;
 }
-[data-upload-drop] {
+[data-upload-drop], [data-content] {
     display: flex;
     justify-content: center;
     align-items: center;

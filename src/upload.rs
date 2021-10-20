@@ -25,8 +25,8 @@ fn contains_unsafe_chars(name: &str) -> bool {
     false
 }
 
-#[post("/", data = "<form>")]
-pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> (Status, Option<&'static str>) {
+#[post("/upload", data = "<form>")]
+pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState<'_>>) -> (Status, Option<&'static str>) {
     let file = &mut form.file;
 
     if file.name().is_none() {
