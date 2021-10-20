@@ -2,4 +2,4 @@ username = "user"
 password = "pass"
 
 [files]
-prefixes = ["user_"]
+prefixes = ["KP_"]
