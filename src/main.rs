@@ -12,6 +12,7 @@ use tokio::sync::RwLock;
 
 use crate::auth::Token;
 use crate::user::{get_users, User};
+use std::rc::Rc;
 
 mod upload;
 mod user;
@@ -39,7 +40,7 @@ fn bad_request() -> &'static str {
 
 pub struct AppState<'s> {
     users: Vec<Arc<User>>,
-    prefix_map: HashMap<&'s str, Arc<User>>,
+    prefix_map: HashMap<Arc<str>, Arc<User>>,
     tokens: RwLock<HashMap<Token<'s>, Arc<User>>>,
 }
 
@@ -53,16 +54,19 @@ impl<'s> AppState<'s> {
         let prefix_map = users
             .clone()
             .into_iter()
-            .map(|x| (as_string(), x.clone()))
-            .fold(HashMap::new(), |mut hm, (u, x)| {
-                hm.insert(u, x);
+            .fold(HashMap::with_capacity(users.len()), |mut hm, user| {
+                for prefix in user.prefixes() {
+                    let p = prefix.clone();
+                    hm.insert(p.clone(), user.clone());
+                }
+
                 hm
             });
 
         Self {
             users,
             prefix_map,
-            tokens: Default::default()
+            tokens: Default::default(),
         }
     }
 }
@@ -73,7 +77,7 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(AppState::new_from_users())
-        .mount("/ajax/", routes![upload::upload, auth::login])
+        .mount("/ajax", routes![upload::upload, auth::login])
         .register("/", catchers![not_found, payload_too_large, unprocessable_entity, bad_request])
         .mount("/", FileServer::from(relative!("public")))
 }

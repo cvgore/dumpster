@@ -16,7 +16,6 @@ pub struct LoginData<'r> {
 
 pub type Token<'t> = &'t str;
 
-
 #[post("/login", data = "<form>")]
 pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState<'_>>) -> Status {
     Status::Ok

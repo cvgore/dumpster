@@ -8,11 +8,14 @@ edition = "2018"
 rocket = "0.5.0-rc.1"
 log = "0.4"
 env_logger = "0.9"
-serde = "1.0"
 toml = "0.5"
 password-hash = "0.3"
 argon2 = "0.3"
 rand_core = { version = "0.6", features = ["std"] }
+
+[dependencies.serde]
+version = "1.0"
+features = ["rc"]
 
 [dependencies.tokio]
 version = "1.10"

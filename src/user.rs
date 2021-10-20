@@ -13,7 +13,7 @@ pub struct User {
     username: String,
     password: Option<String>,
 
-    file_prefixes: Vec<String>,
+    file_prefixes: Vec<Arc<str>>,
 
     hashed_password: Option<String>,
 }
@@ -40,7 +40,7 @@ impl User {
         argon2.verify_password(unknown.as_bytes(), &parsed_hash).is_ok()
     }
 
-    pub fn prefixes(&self) -> &Vec<String> {
+    pub fn prefixes(&self) -> &Vec<Arc<str>> {
         &self.file_prefixes
     }
 
