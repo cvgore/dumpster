@@ -44,7 +44,7 @@
         dropIcon.textContent = ICONMAP_FILE_STATE[state];
         document.body.style.setProperty('--upload-progress', '100%');
 
-        setTimeout(() => {
+        setTimeout(function invokeUnlockUpload() {
             unlockUpload();
         }, 2000);
     }
@@ -79,16 +79,16 @@
             console.error('failed to upload %s', fileInput.files[0].name, ev);
         });
 
-        req.upload.addEventListener('abort', function onUploadError() {
+        req.upload.addEventListener('abort', function onUploadAbort() {
             setReadyToUpload(UPLOAD_ABORT);
         });
 
-        req.upload.addEventListener('timeout', function onUploadError() {
+        req.upload.addEventListener('timeout', function onUploadTimeout() {
             setReadyToUpload(UPLOAD_TIMEOUT);
         });
 
         req.open('POST', '/upload', true);
-        req.timeout = 3000;
+        req.timeout = 3    000;
         req.send(formData);
     });
 
