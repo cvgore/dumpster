@@ -10,23 +10,40 @@
     const STR_NEXT_FILES = 'next files';
 
     const CURRENT_PARAMS = new URLSearchParams(window.location.search);
-    const CURRENT_SCOPE = CURRENT_PARAMS.get('scope') || SCOPE_USER;
+    const CURRENT_SCOPE = CURRENT_PARAMS.get('scope') || SCOPE_COMMON;
     const CURRENT_CURSOR = CURRENT_PARAMS.get('cursor') || 0;
 
-    function downloadFile(file) {
-        const formEl = document.createElement('form');
-        formEl.action = '/ajax/files/download';
-        formEl.method = 'POST';
-        formEl.hidden = true;
+    async function downloadFile(file, ev) {
+        ev.preventDefault();
 
-        const data = new FormData(formEl);
+        const token = sessionStorage.getItem('token');
+        const data = new FormData();
 
         data.set('filename', file.name);
         data.set('scope', CURRENT_SCOPE);
 
-        document.body.appendChild(formEl);
-        formEl.submit();
-        formEl.remove();
+        const resp = await fetch('/ajax/files/download', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: data
+        });
+
+        if (!resp.ok) {
+            return;
+        }
+
+        const blob = await resp.blob();
+
+        const url = window.URL.createObjectURL(blob);
+        const tmpAnchorEl = document.createElement('a');
+        tmpAnchorEl.href = url;
+        tmpAnchorEl.download = file.name;
+
+        document.body.appendChild(tmpAnchorEl);
+        tmpAnchorEl.click();
+        tmpAnchorEl.remove();
     }
 
     function createFileListing(files, cursor) {
@@ -36,8 +53,9 @@
 
         for (const file of files) {
             const listItemEl = document.createElement('li');
-            const linkEl = document.createElement('button');
+            const linkEl = document.createElement('a');
 
+            linkEl.href = "#";
             linkEl.textContent = file.name;
 
             linkEl.addEventListener('click', downloadFile.bind(null, file));
@@ -73,8 +91,8 @@
         });
 
         if (!resp.ok) {
-            // sessionStorage.removeItem('token');
-            // window.location.href = 'login.html';
+            sessionStorage.removeItem('token');
+            window.location.href = 'login.html';
         }
 
         const data = await resp.json();
@@ -82,5 +100,5 @@
         createFileListing(data.files);
     }
 
-    loadFiles()
+    loadFiles();
 })();
