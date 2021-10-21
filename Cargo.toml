@@ -5,13 +5,17 @@ authors = ["cvgore <kacper@cvgo.re>"]
 edition = "2018"
 
 [dependencies]
-rocket = "0.5.0-rc.1"
 log = "0.4"
 env_logger = "0.9"
 toml = "0.5"
 password-hash = "0.3"
 argon2 = "0.3"
 rand_core = { version = "0.6", features = ["std"] }
+rand = "0.8"
+
+[dependencies.rocket]
+version = "0.5.0-rc.1"
+features = ["json"]
 
 [dependencies.serde]
 version = "1.0"

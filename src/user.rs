@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[derive(Deserialize, Serialize)]
 pub struct User {
-    username: String,
+    username: Arc<str>,
     password: Option<String>,
 
     file_prefixes: Vec<Arc<str>>,
@@ -19,8 +19,8 @@ pub struct User {
 }
 
 impl User {
-    pub fn username(&self) -> &String {
-        &self.username
+    pub fn username(&self) -> Arc<str> {
+        self.username.clone()
     }
 
     pub fn check_password(&self, unknown: &str) -> bool {
@@ -76,7 +76,7 @@ impl User {
 
 pub fn get_users() -> Vec<User> {
     fs::read_dir("storage/users")
-        .expect("couldn't exec storage/users folder")
+        .expect("couldn't exec storage/user folder")
         .filter_map(|maybe_file| {
             if let Ok(file) = maybe_file {
                 if !file.file_type().unwrap().is_file() {
@@ -101,7 +101,7 @@ pub fn get_users() -> Vec<User> {
                 }
             }
 
-            log::debug!("users dir entry invalid, skipping");
+            log::debug!("user dir entry invalid, skipping");
 
             None
         })

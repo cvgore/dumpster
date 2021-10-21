@@ -2,7 +2,9 @@
 extern crate rocket;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use rocket::data::{Limits, ToByteUnit};
 use rocket::fs::FileServer;
@@ -12,11 +14,11 @@ use tokio::sync::RwLock;
 
 use crate::auth::Token;
 use crate::user::{get_users, User};
-use std::rc::Rc;
 
 mod upload;
 mod user;
 mod auth;
+mod files;
 
 #[catch(404)]
 fn not_found() -> &'static str {
@@ -33,19 +35,28 @@ fn unprocessable_entity() -> &'static str {
     "🍆 422 Invalid Request"
 }
 
+#[catch(401)]
+fn unauthorized() -> &'static str {
+    "🍆 401 Unauthorized"
+}
+
 #[catch(400)]
 fn bad_request() -> &'static str {
     "🍆 400 Fucked-up Request"
 }
 
-pub struct AppState<'s> {
-    users: Vec<Arc<User>>,
-    prefix_map: HashMap<Arc<str>, Arc<User>>,
-    tokens: RwLock<HashMap<Token<'s>, Arc<User>>>,
-    user_files_counter: RwLock<HashMap<AtomicU64>>
+#[catch(500)]
+fn internal_server_error() -> &'static str {
+    "🍆 500 Internal Server Error"
 }
 
-impl<'s> AppState<'s> {
+pub struct AppState {
+    users: HashMap<Arc<str>, Arc<User>>,
+    prefix_map: HashMap<Arc<str>, Arc<User>>,
+    tokens: RwLock<HashMap<Token, Arc<User>>>,
+}
+
+impl AppState {
     pub fn new_from_users() -> Self {
         let users = get_users()
             .into_iter()
@@ -64,6 +75,15 @@ impl<'s> AppState<'s> {
                 hm
             });
 
+        let users = users
+            .clone()
+            .into_iter()
+            .fold(HashMap::with_capacity(users.len()), |mut hm, user| {
+                hm.insert(user.username().clone(), user.clone());
+
+                hm
+            });
+
         Self {
             users,
             prefix_map,
@@ -78,7 +98,9 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(AppState::new_from_users())
-        .mount("/ajax", routes![upload::upload, auth::login])
-        .register("/", catchers![not_found, payload_too_large, unprocessable_entity, bad_request])
+        .mount("/ajax", routes![upload::upload, auth::login, files::list, files::download_file])
+        .register("/", catchers![
+            not_found, payload_too_large, unprocessable_entity, bad_request, unauthorized, internal_server_error
+        ])
         .mount("/", FileServer::from(relative!("public")))
 }

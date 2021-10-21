@@ -10,18 +10,27 @@
     const STRMAP_FILE_STATE = {
         [UPLOAD_SUCCESS]: 'File :f uploaded successfully',
         [UPLOAD_ABORT]: 'File :f upload cancelled',
-        [UPLOAD_ERROR]: 'File :f failed to upload, see logs'
+        [UPLOAD_ERROR]: 'File :f failed to upload. :e'
     };
     const ICONMAP_FILE_STATE = {
         [UPLOAD_SUCCESS]: '✔',
         [UPLOAD_ABORT]: '🟥',
         [UPLOAD_ERROR]: '❌'
     };
-    
+    const UNKNOWN_ERROR = 'see logs for info';
+
     const dropIcon = document.querySelector('[data-upload-icon]');
     const dropCont = document.querySelector('[data-upload-drop]');
     const fileInput = document.querySelector('[data-file]');
     const uploadText = document.querySelector('[data-upload-text]');
+
+    function parseJson(str) {
+        try {
+            return JSON.parse(str);
+        } catch (e) {
+            return null;
+        }
+    }
 
     function setUploading() {
         fileInput.disabled = true;
@@ -37,8 +46,11 @@
         fileInput.value = '';
     }
 
-    function setReadyToUpload(state) {
-        uploadText.textContent = STRMAP_FILE_STATE[state].replace(':f', fileInput.files[0].name);
+    function setReadyToUpload(state, extra) {
+        uploadText.textContent = STRMAP_FILE_STATE[state]
+            .replace(':f', fileInput.files[0].name)
+            .replace(':e', extra || '');
+
         dropIcon.textContent = ICONMAP_FILE_STATE[state];
         document.body.style.setProperty('--upload-progress', '100%');
 
@@ -65,16 +77,23 @@
         });
 
         req.upload.addEventListener('progress', function onUploadProgress(ev) {
-           setUploadProgress(ev.loaded / ev.total);
+            setUploadProgress(ev.loaded / ev.total);
         });
 
-        req.addEventListener('readystatechange', function onUploadEnd() {
+        req.addEventListener('readystatechange', function onUploadStateChange() {
             if (req.readyState === XMLHttpRequest.DONE) {
                 if (req.status === 200) {
-                    setReadyToUpload(UPLOAD_SUCCESS);    
+                    setReadyToUpload(UPLOAD_SUCCESS);
                 } else {
-                    setReadyToUpload(UPLOAD_ERROR);
-                    console.error('failed to upload, status %d', req.status, req.response);
+                    const data = parseJson(req.response);
+
+                    if (data && data.error) {
+                        setReadyToUpload(UPLOAD_ERROR, data.error);
+                    } else {
+                        setReadyToUpload(UPLOAD_ERROR, UNKNOWN_ERROR);
+                    }
+
+                    console.error('failed to upload %s, status %d', fileInput.files[0].name, req.status, req.response);
                 }
             }
         });

@@ -1,3 +1,5 @@
+/** region Normalize */
+
 /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 
 /* Document
@@ -348,6 +350,9 @@ template {
     display: none;
 }
 
+/** endregion Normalize */
+
+/** region Milligram */
 /*!
   * Milligram v1.4.1
   * https://milligram.io
@@ -369,7 +374,7 @@ html {
 
 body {
     color: #606c76;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-family: 'Roboto', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
     font-size: 1.6em;
     font-weight: 300;
     letter-spacing: .01em;
@@ -608,7 +613,12 @@ select[multiple] {
     height: auto;
 }
 
-label {
+textarea {
+    min-height: 6.5rem;
+}
+
+label,
+legend {
     display: block;
     font-size: 1.6rem;
     font-weight: 700;
@@ -826,6 +836,12 @@ ul {
     padding-left: 0;
 }
 
+dl dl,
+dl ol,
+dl ul,
+ol dl,
+ol ol,
+ol ul,
 ul dl,
 ul ol,
 ul ul {
@@ -843,8 +859,60 @@ ul {
 
 .button,
 button,
+dd,
+dt,
 li {
     margin-bottom: 1.0rem;
+}
+
+fieldset,
+input,
+select,
+textarea {
+    margin-bottom: 1.5rem;
+}
+
+blockquote,
+dl,
+figure,
+form,
+ol,
+p,
+pre,
+table,
+ul {
+    margin-bottom: 2.5rem;
+}
+
+table {
+    border-spacing: 0;
+    display: block;
+    overflow-x: auto;
+    text-align: left;
+    width: 100%;
+}
+
+td,
+th {
+    border-bottom: 0.1rem solid #e1e1e1;
+    padding: 1.2rem 1.5rem;
+}
+
+td:first-child,
+th:first-child {
+    padding-left: 0;
+}
+
+td:last-child,
+th:last-child {
+    padding-right: 0;
+}
+
+@media (min-width: 40rem) {
+    table {
+        display: table;
+        overflow-x: initial;
+    }
 }
 
 b,
@@ -919,8 +987,19 @@ img {
     float: right;
 }
 
-/* CUSTOM */
+/** endregion Milligram */
 
+/** region App css */
+
+:root {
+    --upload-progress: 0;
+}
+h1 {
+    font-size: 4rem;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
 main {
     display: grid;
     grid-template-columns: 1fr;
@@ -933,14 +1012,26 @@ main {
 [data-main-title] {
     text-align: center;
 }
-[data-upload-drop], [data-content] {
+[data-content], [data-upload-drop], [data-center-content] {
     display: flex;
-    justify-content: center;
-    align-items: center;
     user-select: none;
     position: relative;
     flex-flow: column;
 }
+[data-tabs] {
+    text-align: center;
+}
+[data-upload-drop], [data-center-content] {
+    align-items: center;
+    justify-content: center;
+}
+[data-content] {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 .5rem;
+    width: 100%;
+}
+
 [data-upload-icon] {
     font-size: 10rem;
     position: relative;
@@ -981,3 +1072,5 @@ footer {
         transform: translateY(0);
     }
 }
+
+/** endregion App css */

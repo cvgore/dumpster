@@ -7,14 +7,25 @@
     <link rel="icon" href="data:,">
     <title>🚽 dumpster</title>
     <link rel="stylesheet" href="/style.css">
+    <script>
+        if (!sessionStorage.getItem('token')) {
+            window.location.href = 'login.html';
+        }
+    </script>
 </head>
 <body>
     <main>
-        <h1 data-main-title>🚽 D U M P S T E R</h1>
+        <h1 data-main-title><a href="/">🚽 D U M P S T E R</a></h1>
 
-        <div data-content="">
-            <input type="text" data-login required>
-            <input type="password" data-password required>
+        <div data-content>
+            <header data-tabs>
+                <button>View user files</button>
+                <button>View common files</button>
+                <button>Logout</button>
+            </header>
+            <hr>
+            <section data-files-list>
+            </section>
         </div>
 
         <footer>
@@ -24,6 +35,6 @@
         </footer>
     </main>
 
-    <script src="/upload.js"></script>
+    <script src="/panel.js"></script>
 </body>
 </html>
