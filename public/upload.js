@@ -68,8 +68,15 @@
            setUploadProgress(ev.loaded / ev.total);
         });
 
-        req.upload.addEventListener('load', function onUploadEnd() {
-            setReadyToUpload(UPLOAD_SUCCESS);    
+        req.addEventListener('readystatechange', function onUploadEnd() {
+            if (req.readyState === XMLHttpRequest.DONE) {
+                if (req.status === 200) {
+                    setReadyToUpload(UPLOAD_SUCCESS);    
+                } else {
+                    setReadyToUpload(UPLOAD_ERROR);
+                    console.error('failed to upload, status %d', req.status, req.response);
+                }
+            }
         });
 
         req.upload.addEventListener('error', function onUploadError(ev) {
@@ -81,7 +88,7 @@
             setReadyToUpload(UPLOAD_ABORT);
         });
 
-        req.open('POST', '/upload', true);
+        req.open('POST', '/ajax/upload', true);
 
         req.send(formData);
     });

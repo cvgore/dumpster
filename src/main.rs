@@ -42,6 +42,7 @@ pub struct AppState<'s> {
     users: Vec<Arc<User>>,
     prefix_map: HashMap<Arc<str>, Arc<User>>,
     tokens: RwLock<HashMap<Token<'s>, Arc<User>>>,
+    user_files_counter: RwLock<HashMap<AtomicU64>>
 }
 
 impl<'s> AppState<'s> {
