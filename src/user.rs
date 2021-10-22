@@ -72,6 +72,25 @@ impl User {
 
         true
     }
+
+    pub fn get_path_to_user_file(&self, filename: impl AsRef<str>) -> PathBuf {
+        let mut path = self.get_path_to_user_folder();
+
+        path.set_file_name(filename);
+
+        path
+    }
+
+    pub fn get_path_to_user_folder(&self) -> PathBuf {
+        let mut path = PathBuf::from("storage");
+
+        path.push("uploads");
+
+        path.push("user");
+        path.push(ut.user.username().clone().to_string());
+
+        path
+    }
 }
 
 pub fn get_users() -> Vec<User> {
@@ -138,7 +157,7 @@ pub fn get_users() -> Vec<User> {
                 fs::write(file.path(), serialized_data);
             } else {
                 log::debug!("skipped already hashed password in file {:?}", file.path());
-            }
+            }            
 
             Some(data)
         })

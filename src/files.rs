@@ -32,6 +32,32 @@ impl Default for FileScope {
     }
 }
 
+impl FileScope {
+    pub fn get_path_to_common_folder() -> PathBuf {
+        let mut path = PathBuf::from("storage");
+
+        path.push("uploads");
+        path.push("common");
+
+        path
+    }
+
+    pub fn get_path_to_common_file(filename: impl AsRef<str>) -> PathBuf {
+        let mut path = Self::get_path_to_common_folder();
+
+        path.set_file_name(filename);
+
+        path
+    }
+
+    pub fn get_path_to_file(&self, filename: impl AsRef<str>, user: Option<Arc<User>>) -> PathBuf {
+        match self.0 {
+            Self::Common => Self::get_path_to_common_file(filename),
+            Self::User => user.unwrap().get_path_to_user_file(filename),
+        }
+    }
+}
+
 pub struct UserToken {
     user: Arc<User>,
     token: Token,
@@ -159,24 +185,7 @@ pub struct DownloadData<'r> {
 
 #[post("/files/download", data = "<form>")]
 pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Option<NamedFile> {
-    let path = {
-        let mut path = PathBuf::from("storage");
-
-        path.push("uploads");
-
-        match &form.scope {
-            FileScope::User => {
-                path.push("user");
-                path.push(ut.user.username().clone().to_string());
-            },
-            FileScope::Common => path.push("common"),
-        }
-
-        path.push(form.filename);
-
-        path
-    };
-
+    let path = ut.user.get_path_to_user_file(form.filename);
 
     let file = NamedFile::open(&path).await;
 

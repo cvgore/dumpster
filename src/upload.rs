@@ -16,18 +16,6 @@ pub struct UploadData<'r> {
     file: TempFile<'r>,
 }
 
-const UNSAFE_CHARS: [&str; 11] = ["//", "\\", "..", "<", ">", ":", "\"", "|", "?", "*", "\0"];
-
-fn contains_unsafe_chars(name: &str) -> bool {
-    for ch in UNSAFE_CHARS {
-        if name.contains(ch) {
-            return true;
-        }
-    }
-
-    false
-}
-
 #[post("/upload", data = "<form>")]
 pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> Result<(), (Status, Value)> {
     let file = &mut form.file;
@@ -73,16 +61,6 @@ pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> 
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
-
-    let path = {
-        let mut path = PathBuf::from("storage");
-
-        path.push("uploads");
-        path.push("common");
-        path.push(format!("{}-{}.{}", &filename, ts.as_secs(), &ext));
-
-        path
-    };
 
     log::debug!("will store file @ {:?}", path);
 
