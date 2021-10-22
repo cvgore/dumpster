@@ -3,13 +3,16 @@
 
     const contentEl = document.querySelector('[data-content]');
     const filesEl = document.querySelector('[data-files-list]');
+    const toggleScopeUserBtn = document.querySelector('[data-scope-user]');
+    const toggleScopeCommonBtn = document.querySelector('[data-scope-common]');
+    const logoutBtn = document.querySelector('[data-logout]');
 
     const SCOPE_USER = 'user';
     const SCOPE_COMMON = 'common';
 
     const STR_NEXT_FILES = 'next files';
 
-    const CURRENT_PARAMS = new URLSearchParams(window.location.search);
+    const CURRENT_PARAMS = new URL(window.location.href).searchParams;
     const CURRENT_SCOPE = CURRENT_PARAMS.get('scope') || SCOPE_COMMON;
     const CURRENT_CURSOR = CURRENT_PARAMS.get('cursor') || 0;
 
@@ -80,14 +83,40 @@
         }
     }
 
+    async function logout() {
+        const token = sessionStorage.getItem('token');
+
+        await fetch('/ajax/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+        });
+
+        sessionStorage.removeItem('token');
+        window.location.href = 'login.html';
+    }
+
+    function switchScope(scope) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('scope', scope);
+
+        window.location.href = url;
+    }
+
     async function loadFiles() {
         const token = sessionStorage.getItem('token');
 
-        const resp = await fetch('/ajax/files', {
+        const url = new URL(`${window.location.origin}/ajax/files`);
+        url.searchParams.set('scope', CURRENT_SCOPE);
+        url.searchParams.set('cursor', CURRENT_CURSOR);
+
+        const resp = await fetch(url.toString(), {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`
-            }
+            },
+
         });
 
         if (!resp.ok) {
@@ -99,6 +128,10 @@
 
         createFileListing(data.files);
     }
+
+    toggleScopeUserBtn.addEventListener('click', switchScope.bind(null, SCOPE_USER));
+    toggleScopeCommonBtn.addEventListener('click', switchScope.bind(null, SCOPE_COMMON));
+    logoutBtn.addEventListener('click', logout);
 
     loadFiles();
 })();

@@ -12,6 +12,7 @@ use rocket::http::Status;
 use rocket::serde::json::{json, Value};
 
 use crate::AppState;
+use crate::files::UserToken;
 
 #[derive(FromForm, Debug)]
 pub struct LoginData<'r> {
@@ -72,4 +73,13 @@ pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState>) -> Re
     Ok(json!({
         "token": token
     }))
+}
+
+#[post("/logout")]
+pub async fn logout(ut: UserToken, state: &State<AppState>) -> Status {
+    let mut tokens = state.tokens.write().await;
+
+    tokens.remove(&ut.token);
+
+    Status::Ok
 }

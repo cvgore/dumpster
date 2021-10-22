@@ -60,8 +60,8 @@ impl FileScope {
 }
 
 pub struct UserToken {
-    user: Arc<User>,
-    token: Token,
+    pub(crate) user: Arc<User>,
+    pub(crate) token: Token,
 }
 
 #[rocket::async_trait]
