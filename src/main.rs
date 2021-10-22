@@ -2,6 +2,7 @@
 extern crate rocket;
 
 use std::collections::HashMap;
+use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -60,7 +61,15 @@ impl AppState {
     pub fn new_from_users() -> Self {
         let users = get_users()
             .into_iter()
-            .map(|x| Arc::new(x))
+            .map(|x| {
+                let dir = fs::read_dir(x.get_path_to_user_folder());
+
+                if let Err(_) = dir {
+                    fs::create_dir(x.get_path_to_user_folder());
+                }
+
+                Arc::new(x)
+            })
             .collect::<Vec<Arc<User>>>();
 
         let prefix_map = users

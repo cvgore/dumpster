@@ -7,6 +7,8 @@ use rocket::form::validate::Contains;
 use rocket::http::ext::IntoCollection;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::path::PathBuf;
+use std::ffi::OsStr;
 
 #[derive(Deserialize, Serialize)]
 pub struct User {
@@ -73,10 +75,10 @@ impl User {
         true
     }
 
-    pub fn get_path_to_user_file(&self, filename: impl AsRef<str>) -> PathBuf {
+    pub fn get_path_to_user_file(&self, filename: impl AsRef<OsStr>) -> PathBuf {
         let mut path = self.get_path_to_user_folder();
 
-        path.set_file_name(filename);
+        path.push(filename.as_ref().to_str().expect("invalid filename").to_string());
 
         path
     }
@@ -87,7 +89,7 @@ impl User {
         path.push("uploads");
 
         path.push("user");
-        path.push(ut.user.username().clone().to_string());
+        path.push(self.username.clone().to_string());
 
         path
     }

@@ -1,5 +1,8 @@
+use std::collections::HashMap;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use rocket::{Data, State};
@@ -10,10 +13,41 @@ use rocket::http::Status;
 use rocket::serde::json::{json, Value};
 
 use crate::AppState;
+use crate::files::FileScope;
+use crate::user::User;
 
 #[derive(FromForm, Debug)]
 pub struct UploadData<'r> {
     file: TempFile<'r>,
+}
+
+fn guess_scope_from_filename(filename: impl AsRef<OsStr>, prefixes: &HashMap<Arc<str>, Arc<User>>) -> (FileScope, Option<Arc<User>>) {
+    let filename = filename.as_ref().to_str().expect("invalid filename");
+
+    let split = filename.split_once('_');
+
+    log::debug!("splitted filename: {:?}, got {:?}", filename, &split);
+
+    if split.as_ref().is_none() {
+        return (FileScope::Common, None);
+    }
+
+    let (prefix, _) = split.unwrap();
+
+    log::debug!("got prefix {}", prefix);
+
+    if prefix.len() == 0 {
+        return (FileScope::Common, None);
+    }
+
+    log::debug!("prefix list {:?}", prefixes.keys());
+
+    let prefix = format!("{}_", prefix);
+
+    prefixes.get(prefix.as_str()).map_or_else(
+        || (FileScope::Common, None),
+        |x| (FileScope::User, Some(x.clone())),
+    )
 }
 
 #[post("/upload", data = "<form>")]
@@ -61,6 +95,17 @@ pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> 
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards");
+
+    let path = {
+        let (scope, user) = guess_scope_from_filename(
+            &filename, &state.prefix_map,
+        );
+
+        let path = scope.get_path_to_file(&filename, user);
+
+        path.with_extension(ext.to_string())
+    };
+
 
     log::debug!("will store file @ {:?}", path);
 

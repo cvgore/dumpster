@@ -19,6 +19,7 @@ use crate::auth::Token;
 use crate::user::User;
 use std::path::PathBuf;
 use std::borrow::Borrow;
+use std::ffi::OsStr;
 
 #[derive(Debug, PartialEq, FromFormField)]
 pub enum FileScope {
@@ -42,16 +43,16 @@ impl FileScope {
         path
     }
 
-    pub fn get_path_to_common_file(filename: impl AsRef<str>) -> PathBuf {
+    pub fn get_path_to_common_file(filename: impl AsRef<OsStr>) -> PathBuf {
         let mut path = Self::get_path_to_common_folder();
 
-        path.set_file_name(filename);
+        path.push(filename.as_ref().to_str().expect("invalid filename").to_string());
 
         path
     }
 
-    pub fn get_path_to_file(&self, filename: impl AsRef<str>, user: Option<Arc<User>>) -> PathBuf {
-        match self.0 {
+    pub fn get_path_to_file(&self, filename: impl AsRef<OsStr>, user: Option<Arc<User>>) -> PathBuf {
+        match self {
             Self::Common => Self::get_path_to_common_file(filename),
             Self::User => user.unwrap().get_path_to_user_file(filename),
         }
@@ -185,7 +186,7 @@ pub struct DownloadData<'r> {
 
 #[post("/files/download", data = "<form>")]
 pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Option<NamedFile> {
-    let path = ut.user.get_path_to_user_file(form.filename);
+    let path = form.scope.get_path_to_file(form.filename, Some(ut.user.clone()));
 
     let file = NamedFile::open(&path).await;
 
