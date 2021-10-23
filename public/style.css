@@ -1060,6 +1060,10 @@ main {
 footer {
     text-align: center;
 }
+.button + .button,
+button + button {
+    margin-left: .5rem;
+}
 
 @keyframes bump {
     from {

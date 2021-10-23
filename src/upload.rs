@@ -101,6 +101,7 @@ pub async fn upload(mut form: Form<UploadData<'_>>, state: &State<AppState>) -> 
             &filename, &state.prefix_map,
         );
 
+        let filename = format!("{}-{}", filename, ts.as_millis());
         let path = scope.get_path_to_file(&filename, user);
 
         path.with_extension(ext.to_string())
