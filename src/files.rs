@@ -1,13 +1,17 @@
+use std::borrow::Borrow;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::fmt;
 use std::fmt::{Debug, Write};
+use std::fs::FileType;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use rand::{Rng, RngCore};
 use rocket::{Data, Request, State};
 use rocket::data::Capped;
 use rocket::form::{DataField, Form, Strict};
-use rocket::fs::{TempFile, NamedFile};
+use rocket::fs::{NamedFile, TempFile, FileName};
 use rocket::http::ext::IntoCollection;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
@@ -17,9 +21,6 @@ use serde::Serialize;
 use crate::AppState;
 use crate::auth::Token;
 use crate::user::User;
-use std::path::PathBuf;
-use std::borrow::Borrow;
-use std::ffi::OsStr;
 
 #[derive(Debug, PartialEq, FromFormField)]
 pub enum FileScope {
@@ -112,6 +113,9 @@ struct File {
 
 #[get("/files?<scope>&<cursor>")]
 pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) -> Result<Value, Status> {
+    const MAX_FILES: u64 = 10;
+    let cursor = cursor.unwrap_or(0);
+
     let path = {
         let mut path = PathBuf::from("storage");
 
@@ -121,7 +125,7 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
             FileScope::User => {
                 path.push("user");
                 path.push(ut.user.username().clone().to_string());
-            },
+            }
             FileScope::Common => path.push("common"),
         }
 
@@ -136,10 +140,15 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
         return Ok(json!({}));
     }
 
-    let files = {
+    let (files, more) = {
+        let mut offset = cursor;
+
         let mut rdir = rdir.unwrap();
 
         let mut files: Vec<File> = vec![];
+
+        let mut current_files = 0u64;
+        let mut more = false;
 
         loop {
             let entry = rdir.next_entry().await;
@@ -157,6 +166,11 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
             }
 
             let entry = entry.unwrap();
+
+            if !entry.file_type().await.map_or_else(|_| false, |x| x.is_file()) {
+                continue;
+            }
+
             let filename = entry.file_name();
             let filename = filename.to_str().expect("filename with invalid chars").to_owned();
 
@@ -164,22 +178,37 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
                 continue;
             }
 
+            if current_files >= MAX_FILES {
+                more = true;
+                break;
+            }
+
+            if offset > 0 {
+                offset = offset - 1;
+                continue;
+            }
+
+            current_files = current_files + 1;
+
             files.push(File {
                 name: filename.into(),
             })
         }
 
-        files
+        (files, more)
     };
 
+
     Ok(json!({
-        "files": files
+        "files": files,
+        "nextCursor": more.then(|| cursor + MAX_FILES),
+        "prevCursor": cursor.checked_sub(MAX_FILES),
     }))
 }
 
 #[derive(FromForm, Debug)]
 pub struct DownloadData<'r> {
-    filename: &'r str,
+    filename: &'r FileName,
     scope: FileScope,
 }
 

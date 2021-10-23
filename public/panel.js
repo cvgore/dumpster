@@ -10,11 +10,12 @@
     const SCOPE_USER = 'user';
     const SCOPE_COMMON = 'common';
 
-    const STR_NEXT_FILES = 'next files';
+    const STR_NEXT_FILES = 'next files >';
+    const STR_PREV_FILES = '< prev files';
 
     const CURRENT_PARAMS = new URL(window.location.href).searchParams;
     const CURRENT_SCOPE = CURRENT_PARAMS.get('scope') || SCOPE_COMMON;
-    const CURRENT_CURSOR = CURRENT_PARAMS.get('cursor') || 0;
+    const CURRENT_CURSOR = parseInt(CURRENT_PARAMS.get('cursor') || 0);
 
     async function downloadFile(file, ev) {
         ev.preventDefault();
@@ -49,7 +50,7 @@
         tmpAnchorEl.remove();
     }
 
-    function createFileListing(files, cursor) {
+    function createFileListing({files, prevCursor, nextCursor}) {
         filesEl.childNodes.forEach((n) => n.remove());
 
         const listGrpEl = document.createElement('ul');
@@ -58,7 +59,7 @@
             const listItemEl = document.createElement('li');
             const linkEl = document.createElement('a');
 
-            linkEl.href = "#";
+            linkEl.href = 'javascript: void 0';
             linkEl.textContent = file.name;
 
             linkEl.addEventListener('click', downloadFile.bind(null, file));
@@ -69,17 +70,30 @@
 
         filesEl.append(listGrpEl);
 
-        if (cursor) {
+        if (nextCursor !== null) {
             const url = new URL(window.location.href);
             url.searchParams.set('scope', CURRENT_SCOPE);
-            url.searchParams.set('cursor', cursor);
+            url.searchParams.set('cursor', nextCursor);
 
-            const moreFilesBtn = document.createElement('a');
-            moreFilesBtn.className = 'button';
-            moreFilesBtn.textContent = STR_NEXT_FILES;
-            moreFilesBtn.href = window.location.href;
+            const nextFilesBtn = document.createElement('a');
+            nextFilesBtn.className = 'button';
+            nextFilesBtn.textContent = STR_NEXT_FILES;
+            nextFilesBtn.href = url;
 
-            filesEl.append(moreFilesBtn);
+            filesEl.append(nextFilesBtn);
+        }
+
+        if (prevCursor !== null) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('scope', CURRENT_SCOPE);
+            url.searchParams.set('cursor', prevCursor);
+
+            const prevFilesBtn = document.createElement('a');
+            prevFilesBtn.className = 'button';
+            prevFilesBtn.textContent = STR_PREV_FILES;
+            prevFilesBtn.href = url;
+
+            filesEl.prepend(prevFilesBtn);
         }
     }
 
@@ -100,6 +114,7 @@
     function switchScope(scope) {
         const url = new URL(window.location.href);
         url.searchParams.set('scope', scope);
+        url.searchParams.set('cursor', 0);
 
         window.location.href = url;
     }
@@ -126,7 +141,7 @@
 
         const data = await resp.json();
 
-        createFileListing(data.files);
+        createFileListing(data);
     }
 
     toggleScopeUserBtn.addEventListener('click', switchScope.bind(null, SCOPE_USER));
@@ -134,4 +149,10 @@
     logoutBtn.addEventListener('click', logout);
 
     loadFiles();
+
+    if (CURRENT_SCOPE === SCOPE_COMMON) {
+        toggleScopeCommonBtn.className += ' button-outline';
+    } else if (CURRENT_SCOPE === SCOPE_USER) {
+        toggleScopeUserBtn.className += ' button-outline';
+    }
 })();
