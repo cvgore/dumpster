@@ -1022,16 +1022,17 @@ main {
     text-align: center;
 }
 [data-upload-drop], [data-center-content] {
-    align-items: center;
     justify-content: center;
 }
-[data-content] {
+[data-upload-drop] {
+    align-items: center;
+}
+[data-content], [data-center-content] {
     max-width: 960px;
     margin: 0 auto;
     padding: 0 .5rem;
     width: 100%;
 }
-
 [data-upload-icon] {
     font-size: 10rem;
     position: relative;
@@ -1079,5 +1080,4 @@ button + button {
         transform: translateY(0);
     }
 }
-
 /** endregion App css */

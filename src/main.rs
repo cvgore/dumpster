@@ -134,4 +134,5 @@ fn rocket() -> _ {
             too_many_requests
         ])
         .mount("/", FileServer::from(relative!("public")))
+
 }
