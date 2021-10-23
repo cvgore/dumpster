@@ -4,14 +4,16 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fmt::{Debug, Write};
 use std::fs::FileType;
+use std::ops::Sub;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use rand::{Rng, RngCore};
 use rocket::{Data, Request, State};
 use rocket::data::Capped;
 use rocket::form::{DataField, Form, Strict};
-use rocket::fs::{NamedFile, TempFile, FileName};
+use rocket::fs::{FileName, NamedFile, TempFile};
 use rocket::http::ext::IntoCollection;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
@@ -89,12 +91,25 @@ impl<'r> FromRequest<'r> for UserToken {
         }
 
         let app_state = state.unwrap();
-        let tokens = app_state.tokens.read().await;
+        let mut tokens = app_state.tokens.write().await;
 
-        let user_token = tokens.get_key_value(token);
+        let user_token = tokens.list.get_key_value(token);
 
         if user_token.is_none() {
             return Outcome::Failure((Status::Unauthorized, "invalid token"));
+        }
+
+        let token_time = tokens.lifespans.get(token)
+            .map_or_else(
+                || Instant::now().sub(Duration::from_secs(1)),
+                |x| x.to_owned(),
+            );
+
+        if token_time <= Instant::now() {
+            tokens.list.remove(token);
+            tokens.lifespans.remove(token);
+
+            return Outcome::Failure((Status::Unauthorized, "expired token"));
         }
 
         let (token, user) = user_token.unwrap();
@@ -208,13 +223,21 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
 
 #[derive(FromForm, Debug)]
 pub struct DownloadData<'r> {
-    filename: &'r FileName,
+    filename: &'r str,
     scope: FileScope,
 }
 
-
 #[post("/files/download", data = "<form>")]
-pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Option<NamedFile> {
+pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Result<Option<NamedFile>, Status> {
+    {
+        let filename = form.filename.split_once('.').map_or_else(|| form.filename, |(x, _)| x);
+        if !FileName::new(filename).is_safe() {
+            log::debug!("illegal chars detected in filename");
+
+            return Err(Status::BadRequest);
+        }
+    }
+
     let path = form.scope.get_path_to_file(form.filename, Some(ut.user.clone()));
 
     let file = NamedFile::open(&path).await;
@@ -222,8 +245,8 @@ pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Optio
     if file.is_err() {
         log::debug!("tried to download non-existent file {:?}", path);
 
-        return None;
+        return Ok(None);
     }
 
-    file.ok()
+    Ok(file.ok())
 }

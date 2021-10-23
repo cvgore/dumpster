@@ -13,6 +13,8 @@ use rocket::serde::json::{json, Value};
 
 use crate::AppState;
 use crate::files::UserToken;
+use std::time::{Instant, Duration};
+use std::ops::Add;
 
 #[derive(FromForm, Debug)]
 pub struct LoginData<'r> {
@@ -68,7 +70,11 @@ pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState>) -> Re
 
     let token = new_token();
 
-    tokens.insert(token.clone().into_boxed_str().into(), user);
+    tokens.list.insert(token.clone().into_boxed_str().into(), user);
+    tokens.lifespans.insert(
+        token.clone().into_boxed_str().into(),
+        Instant::now().add(Duration::from_secs(5 * 60))
+    );
 
     Ok(json!({
         "token": token
@@ -79,7 +85,8 @@ pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState>) -> Re
 pub async fn logout(ut: UserToken, state: &State<AppState>) -> Status {
     let mut tokens = state.tokens.write().await;
 
-    tokens.remove(&ut.token);
+    tokens.list.remove(&ut.token);
+    tokens.lifespans.remove(&ut.token);
 
     Status::Ok
 }

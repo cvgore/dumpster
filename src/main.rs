@@ -1,11 +1,12 @@
 #[macro_use]
 extern crate rocket;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::time::Instant;
 
 use rocket::data::{Limits, ToByteUnit};
 use rocket::fs::FileServer;
@@ -51,10 +52,24 @@ fn internal_server_error() -> &'static str {
     "🍆 500 Internal Server Error"
 }
 
+struct TokensVec {
+    list: HashMap<Token, Arc<User>>,
+    lifespans: HashMap<Token, Instant>,
+}
+
+impl Default for TokensVec {
+    fn default() -> Self {
+        Self {
+            list: Default::default(),
+            lifespans: Default::default(),
+        }
+    }
+}
+
 pub struct AppState {
     users: HashMap<Arc<str>, Arc<User>>,
     prefix_map: HashMap<Arc<str>, Arc<User>>,
-    tokens: RwLock<HashMap<Token, Arc<User>>>,
+    tokens: RwLock<TokensVec>,
 }
 
 impl AppState {
