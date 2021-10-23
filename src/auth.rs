@@ -1,20 +1,16 @@
-use std::error::Error;
-use std::fmt;
 use std::fmt::Write;
+use std::ops::Add;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-use rand::{Rng, RngCore};
-use rocket::{Data, State};
-use rocket::data::Capped;
-use rocket::form::{DataField, Form, Strict};
-use rocket::fs::TempFile;
+use rocket::State;
+use rocket::form::Form;
 use rocket::http::Status;
 use rocket::serde::json::{json, Value};
+use rocket_governor::{Method, Quota, RocketGovernable, RocketGovernor};
 
 use crate::AppState;
 use crate::files::UserToken;
-use std::time::{Instant, Duration};
-use std::ops::Add;
 
 #[derive(FromForm, Debug)]
 pub struct LoginData<'r> {
@@ -25,6 +21,8 @@ pub struct LoginData<'r> {
 pub type Token = Arc<str>;
 
 fn new_token() -> String {
+    use argon2::password_hash::rand_core::RngCore;
+
     const TOKEN_BYTES: usize = 32;
 
     let token_bytes = {
@@ -48,8 +46,21 @@ fn new_token() -> String {
     token
 }
 
+pub struct LoginRateLimitGuard;
+
+impl<'r> RocketGovernable<'r> for LoginRateLimitGuard {
+    fn quota(_method: Method, _route_name: &str) -> Quota {
+        const WAIT_TIME: u64 = 2 * 60;
+        const MAX_BURST: u32 = 5;
+
+        Quota::with_period(Duration::from_secs(WAIT_TIME))
+            .unwrap()
+            .allow_burst(Self::nonzero(MAX_BURST))
+    }
+}
+
 #[post("/login", data = "<form>")]
-pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState>) -> Result<Value, Status> {
+pub async fn login(form: Form<LoginData<'_>>, state: &State<AppState>, _rt: RocketGovernor<'_, LoginRateLimitGuard>) -> Result<Value, Status> {
     let entry = state.users.get(form.user);
 
     if entry.is_none() {
@@ -73,7 +84,7 @@ pub async fn login(mut form: Form<LoginData<'_>>, state: &State<AppState>) -> Re
     tokens.list.insert(token.clone().into_boxed_str().into(), user);
     tokens.lifespans.insert(
         token.clone().into_boxed_str().into(),
-        Instant::now().add(Duration::from_secs(5 * 60))
+        Instant::now().add(Duration::from_secs(5 * 60)),
     );
 
     Ok(json!({

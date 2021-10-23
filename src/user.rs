@@ -1,14 +1,9 @@
-use std::fs;
-use std::fs::FileType;
-use std::io::{Read, Write};
-
-use rocket::form::FromForm;
-use rocket::form::validate::Contains;
-use rocket::http::ext::IntoCollection;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::path::PathBuf;
 use std::ffi::OsStr;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct User {
@@ -50,7 +45,7 @@ impl User {
         use argon2::{
             password_hash::{
                 rand_core::OsRng,
-                PasswordHash, PasswordHasher, SaltString,
+                PasswordHasher, SaltString,
             },
             Argon2,
         };
@@ -105,7 +100,7 @@ pub fn get_users() -> Vec<User> {
                     return None;
                 }
 
-                if let None = file.file_name().to_str() {
+                if file.file_name().to_str().is_none() {
                     log::warn!("error while transmuting file name to string");
                     return None;
                 }
@@ -156,10 +151,13 @@ pub fn get_users() -> Vec<User> {
             if hashed_recently {
                 let serialized_data = toml::to_string(&data).unwrap();
                 log::info!("writing hashed password to {:?}", file.path());
-                fs::write(file.path(), serialized_data);
+                let _ = fs::write(file.path(), serialized_data)
+                    .map_err(|why| {
+                        log::warn!("failed to save updated user config {:?} - {}", file.path(), why);
+                    });
             } else {
                 log::debug!("skipped already hashed password in file {:?}", file.path());
-            }            
+            }
 
             Some(data)
         })

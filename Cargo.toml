@@ -12,6 +12,7 @@ password-hash = "0.3"
 argon2 = "0.3"
 rand_core = { version = "0.6", features = ["std"] }
 rand = "0.8"
+rocket-governor = "0.0.1-rc.9"
 
 [dependencies.rocket]
 version = "0.5.0-rc.1"

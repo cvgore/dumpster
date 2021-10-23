@@ -3,6 +3,7 @@
 
     const STR_LOGIN = 'login';
     const STR_UNAUTHORIZED = 'invalid credentials';
+    const STR_TOO_MANY_REQUESTS = 'too many attempts, wait few mins';
 
     const user = document.querySelector('#user');
     const pass = document.querySelector('#pass');
@@ -10,7 +11,18 @@
     const loginFields = document.querySelector('fieldset');
     const loginBtn = document.querySelector('[data-login]');
 
-    function setLoginFailed() {
+    function setLoginFailed(status) {
+        if (status === 429) {
+            return new Promise((resolve) => {
+                loginBtn.value = STR_TOO_MANY_REQUESTS;
+
+                setTimeout(() => {
+                    loginBtn.value = STR_LOGIN;
+                    resolve();
+                }, 5000);
+            });
+        }
+
         return new Promise((resolve) => {
             loginBtn.value = STR_UNAUTHORIZED;
 
@@ -39,7 +51,7 @@
         });
 
         if (!resp.ok) {
-            await setLoginFailed();
+            await setLoginFailed(resp.status);
             return;
         }
 

@@ -1,13 +1,10 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::ffi::OsStr;
-use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use rocket::{Data, State};
-use rocket::data::Capped;
-use rocket::form::{DataField, Form, Strict};
+use rocket::{State};
+use rocket::form::{Form};
 use rocket::fs::TempFile;
 use rocket::http::Status;
 use rocket::serde::json::{json, Value};
@@ -36,7 +33,7 @@ fn guess_scope_from_filename(filename: impl AsRef<OsStr>, prefixes: &HashMap<Arc
 
     log::debug!("got prefix {}", prefix);
 
-    if prefix.len() == 0 {
+    if prefix.is_empty() {
         return (FileScope::Common, None);
     }
 

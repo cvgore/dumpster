@@ -21,33 +21,64 @@
         ev.preventDefault();
 
         const token = sessionStorage.getItem('token');
-        const data = new FormData();
+        const formData = new FormData();
 
-        data.set('filename', file.name);
-        data.set('scope', CURRENT_SCOPE);
+        formData.set('filename', file.name);
+        formData.set('scope', CURRENT_SCOPE);
 
-        const resp = await fetch('/ajax/files/download', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: data
+        const req = new XMLHttpRequest();
+
+        const target = ev.target;
+        const progressEl = document.createElement('b');
+        progressEl.className = 'download-progress';
+
+        target.append(progressEl);
+
+        req.addEventListener('loadstart', function onDownloadStart() {
+            progressEl.textContent = '...';
         });
 
-        if (!resp.ok) {
-            return;
-        }
+        req.addEventListener('progress', function onDownloadProgress(ev) {
+            const percent = ev.loaded / ev.total;
 
-        const blob = await resp.blob();
+            progressEl.textContent = `${(percent * 100).toFixed(0)}%`;
+        });
 
-        const url = window.URL.createObjectURL(blob);
-        const tmpAnchorEl = document.createElement('a');
-        tmpAnchorEl.href = url;
-        tmpAnchorEl.download = file.name;
+        req.addEventListener('readystatechange', function onDownloadStateChange() {
+            if (req.readyState === XMLHttpRequest.DONE) {
+                if (req.status === 200) {
+                    const url = URL.createObjectURL(req.response);
+                    const tmpAnchorEl = document.createElement('a');
+                    tmpAnchorEl.href = url;
+                    tmpAnchorEl.download = file.name;
 
-        document.body.appendChild(tmpAnchorEl);
-        tmpAnchorEl.click();
-        tmpAnchorEl.remove();
+                    document.body.appendChild(tmpAnchorEl);
+                    tmpAnchorEl.click();
+                    tmpAnchorEl.remove();
+                    progressEl.remove();
+                } else if (req.status === 401) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = 'panel.html';
+                } else {
+                    console.error('failed to download %s, status %d', file, req.status, req.response);
+                }
+            }
+        });
+
+        req.addEventListener('error', function onDownloadError(ev) {
+            progressEl.remove();
+
+            console.error('failed to download %s', file, ev);
+        });
+
+        req.addEventListener('abort', function onDownloadAbort() {
+            progressEl.remove();
+        });
+
+        req.open('POST', '/ajax/files/download', true);
+        req.setRequestHeader('Authorization', `Bearer ${token}`);
+        req.responseType = 'blob';
+        req.send(formData);
     }
 
     function createFileListing({files, prevCursor, nextCursor}) {
@@ -148,11 +179,11 @@
     toggleScopeCommonBtn.addEventListener('click', switchScope.bind(null, SCOPE_COMMON));
     logoutBtn.addEventListener('click', logout);
 
-    loadFiles();
-
     if (CURRENT_SCOPE === SCOPE_COMMON) {
         toggleScopeCommonBtn.className += ' button-outline';
     } else if (CURRENT_SCOPE === SCOPE_USER) {
         toggleScopeUserBtn.className += ' button-outline';
     }
+
+    loadFiles();
 })();

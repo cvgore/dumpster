@@ -1,17 +1,15 @@
+#![deny(warnings)]
+#![deny(clippy::all)]
 #[macro_use]
 extern crate rocket;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
-use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
-use rocket::data::{Limits, ToByteUnit};
 use rocket::fs::FileServer;
 use rocket::fs::relative;
-use rocket::futures::StreamExt;
 use tokio::sync::RwLock;
 
 use crate::auth::Token;
@@ -24,22 +22,22 @@ mod files;
 
 #[catch(404)]
 fn not_found() -> &'static str {
-    "🍆 404 Not Found"
+    "🍆 404 Fucked Out"
 }
 
 #[catch(413)]
 fn payload_too_large() -> &'static str {
-    "🍆 413 Request Too Heavy"
+    "🍆 413 Request Too Fucking"
 }
 
 #[catch(422)]
 fn unprocessable_entity() -> &'static str {
-    "🍆 422 Invalid Request"
+    "🍆 422 Infucking Request"
 }
 
 #[catch(401)]
 fn unauthorized() -> &'static str {
-    "🍆 401 Unauthorized"
+    "🍆 401 Unfucktorized"
 }
 
 #[catch(400)]
@@ -47,23 +45,20 @@ fn bad_request() -> &'static str {
     "🍆 400 Fucked-up Request"
 }
 
-#[catch(500)]
-fn internal_server_error() -> &'static str {
-    "🍆 500 Internal Server Error"
+#[catch(429)]
+fn too_many_requests() -> &'static str {
+    "🍆 429 Go Fuck Yourself"
 }
 
+#[catch(500)]
+fn internal_server_error() -> &'static str {
+    "🍆 500 Internal Server Fucking"
+}
+
+#[derive(Default)]
 struct TokensVec {
     list: HashMap<Token, Arc<User>>,
     lifespans: HashMap<Token, Instant>,
-}
-
-impl Default for TokensVec {
-    fn default() -> Self {
-        Self {
-            list: Default::default(),
-            lifespans: Default::default(),
-        }
-    }
 }
 
 pub struct AppState {
@@ -76,14 +71,14 @@ impl AppState {
     pub fn new_from_users() -> Self {
         let users = get_users()
             .into_iter()
-            .map(|x| {
-                let dir = fs::read_dir(x.get_path_to_user_folder());
+            .map(|user| {
+                let _ = fs::read_dir(user.get_path_to_user_folder())
+                    .map_err(|_| {
+                        fs::create_dir(user.get_path_to_user_folder())
+                            .expect("failed to create user folder");
+                    });
 
-                if let Err(_) = dir {
-                    fs::create_dir(x.get_path_to_user_folder());
-                }
-
-                Arc::new(x)
+                Arc::new(user)
             })
             .collect::<Vec<Arc<User>>>();
 
@@ -103,7 +98,7 @@ impl AppState {
             .clone()
             .into_iter()
             .fold(HashMap::with_capacity(users.len()), |mut hm, user| {
-                hm.insert(user.username().clone(), user.clone());
+                hm.insert(user.username(), user.clone());
 
                 hm
             });
@@ -122,9 +117,21 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(AppState::new_from_users())
-        .mount("/ajax", routes![upload::upload, auth::login, files::list, files::download_file])
+        .mount("/ajax", routes![
+            upload::upload,
+            auth::login,
+            files::list,
+            files::download_file,
+            auth::logout
+        ])
         .register("/", catchers![
-            not_found, payload_too_large, unprocessable_entity, bad_request, unauthorized, internal_server_error
+            not_found,
+            payload_too_large,
+            unprocessable_entity,
+            bad_request,
+            unauthorized,
+            internal_server_error,
+            too_many_requests
         ])
         .mount("/", FileServer::from(relative!("public")))
 }

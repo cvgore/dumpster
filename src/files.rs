@@ -1,20 +1,14 @@
 use std::borrow::Borrow;
-use std::error::Error;
 use std::ffi::OsStr;
-use std::fmt;
-use std::fmt::{Debug, Write};
-use std::fs::FileType;
+use std::fmt::{Debug};
 use std::ops::Sub;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use rand::{Rng, RngCore};
-use rocket::{Data, Request, State};
-use rocket::data::Capped;
-use rocket::form::{DataField, Form, Strict};
-use rocket::fs::{FileName, NamedFile, TempFile};
-use rocket::http::ext::IntoCollection;
+use rocket::{Request};
+use rocket::form::{Form};
+use rocket::fs::{FileName, NamedFile};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::serde::json::{json, Value};
@@ -136,10 +130,10 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
 
         path.push("uploads");
 
-        match scope.unwrap_or(Default::default()) {
+        match scope.unwrap_or_default() {
             FileScope::User => {
                 path.push("user");
-                path.push(ut.user.username().clone().to_string());
+                path.push(ut.user.username().to_string());
             }
             FileScope::Common => path.push("common"),
         }
@@ -189,7 +183,7 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
             let filename = entry.file_name();
             let filename = filename.to_str().expect("filename with invalid chars").to_owned();
 
-            if filename.starts_with(".") {
+            if filename.starts_with('.') {
                 continue;
             }
 
@@ -199,14 +193,14 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
             }
 
             if offset > 0 {
-                offset = offset - 1;
+                offset -= 1;
                 continue;
             }
 
-            current_files = current_files + 1;
+            current_files += 1;
 
             files.push(File {
-                name: filename.into(),
+                name: filename,
             })
         }
 
