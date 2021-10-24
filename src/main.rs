@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use rocket::fs::FileServer;
-use rocket::fs::relative;
 use tokio::sync::RwLock;
 
 use crate::auth::Token;
@@ -133,6 +132,5 @@ fn rocket() -> _ {
             internal_server_error,
             too_many_requests
         ])
-        .mount("/", FileServer::from(relative!("public")))
-
+        .mount("/", FileServer::from("public"))
 }

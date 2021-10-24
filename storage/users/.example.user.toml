@@ -1,5 +1,4 @@
 username = "user"
 password = "pass"
 
-[files]
-prefixes = ["KP_"]
+file_prefixes = ["user"]
