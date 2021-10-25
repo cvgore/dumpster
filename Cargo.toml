@@ -1,6 +1,6 @@
 [package]
 name = "dumpster"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 authors = ["cvgore <kacper@cvgo.re>"]
 edition = "2018"
 
