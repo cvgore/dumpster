@@ -12,6 +12,7 @@ use rocket::fs::{FileName, NamedFile};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::serde::json::{json, Value};
+use rocket::serde::json::serde_json::json;
 use serde::Serialize;
 
 use crate::AppState;
@@ -122,6 +123,47 @@ struct File {
 
 #[get("/files?<scope>&<cursor>")]
 pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) -> Result<Value, Status> {
+
+
+
+    Ok(json!({
+        "files": files,
+        "nextCursor": more.then(|| cursor + MAX_FILES),
+        "prevCursor": cursor.checked_sub(MAX_FILES),
+    }))
+}
+
+#[derive(FromForm, Debug)]
+pub struct DownloadData<'r> {
+    filename: &'r str,
+    scope: FileScope,
+}
+
+#[post("/files/download", data = "<form>")]
+pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Result<Option<NamedFile>, Status> {
+    {
+        let filename = form.filename.split_once('.').map_or_else(|| form.filename, |(x, _)| x);
+        if !FileName::new(filename).is_safe() {
+            log::debug!("illegal chars detected in filename");
+
+            return Err(Status::BadRequest);
+        }
+    }
+
+    let path = form.scope.get_path_to_file(form.filename, Some(ut.user.clone()));
+
+    let file = NamedFile::open(&path).await;
+
+    if file.is_err() {
+        log::debug!("tried to download non-existent file {:?}", path);
+
+        return Ok(None);
+    }
+
+    Ok(file.ok())
+}
+
+pub fn fetch_files() -> Result<Vec<File>, String> {
     const MAX_FILES: u64 = 10;
     let cursor = cursor.unwrap_or(0);
 
@@ -206,41 +248,4 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
 
         (files, more)
     };
-
-
-    Ok(json!({
-        "files": files,
-        "nextCursor": more.then(|| cursor + MAX_FILES),
-        "prevCursor": cursor.checked_sub(MAX_FILES),
-    }))
-}
-
-#[derive(FromForm, Debug)]
-pub struct DownloadData<'r> {
-    filename: &'r str,
-    scope: FileScope,
-}
-
-#[post("/files/download", data = "<form>")]
-pub async fn download_file(ut: UserToken, form: Form<DownloadData<'_>>) -> Result<Option<NamedFile>, Status> {
-    {
-        let filename = form.filename.split_once('.').map_or_else(|| form.filename, |(x, _)| x);
-        if !FileName::new(filename).is_safe() {
-            log::debug!("illegal chars detected in filename");
-
-            return Err(Status::BadRequest);
-        }
-    }
-
-    let path = form.scope.get_path_to_file(form.filename, Some(ut.user.clone()));
-
-    let file = NamedFile::open(&path).await;
-
-    if file.is_err() {
-        log::debug!("tried to download non-existent file {:?}", path);
-
-        return Ok(None);
-    }
-
-    Ok(file.ok())
 }

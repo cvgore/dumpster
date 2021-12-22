@@ -18,6 +18,7 @@ mod upload;
 mod user;
 mod auth;
 mod files;
+mod db;
 
 #[catch(404)]
 fn not_found() -> &'static str {
