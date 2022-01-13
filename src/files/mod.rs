@@ -17,22 +17,40 @@ use serde::Serialize;
 
 use crate::AppState;
 use crate::auth::Token;
+use crate::shared::SharedUser;
 use crate::user::User;
 
 #[derive(Debug, PartialEq, FromFormField)]
-pub enum FileScope {
+pub enum FormFileScope {
     Common,
     User,
 }
 
-impl Default for FileScope {
+#[derive(Debug, PartialEq)]
+pub enum FileScope {
+    Common,
+    User(SharedUser),
+}
+
+impl Default for FormFileScope {
     fn default() -> Self {
-        FileScope::Common
+        FormFileScope::Common
     }
 }
 
 impl FileScope {
-    pub fn get_path_to_common_folder() -> PathBuf {
+    fn from(b: Option<SharedUser>) -> FileScope {
+        b.map_or_else(|| FileScope::Common, |u| FileScope::User(u))
+    }
+
+    pub fn file_path(&self, filename: impl AsRef<OsStr>) -> PathBuf {
+        match self {
+            FileScope::Common => self.common_file_path(filename),
+            FileScope::User(user) => self.user_file_path(filename, user.clone())
+        }
+    }
+
+    fn common_folder(&self) -> PathBuf {
         let mut path = PathBuf::from("storage");
 
         path.push("uploads");
@@ -41,19 +59,31 @@ impl FileScope {
         path
     }
 
-    pub fn get_path_to_common_file(filename: impl AsRef<OsStr>) -> PathBuf {
-        let mut path = Self::get_path_to_common_folder();
+    fn common_file_path(&self, filename: impl AsRef<OsStr>) -> PathBuf {
+        let mut path = self.get_path_to_common_folder();
 
         path.push(filename.as_ref().to_str().expect("invalid filename").to_string());
 
         path
     }
 
-    pub fn get_path_to_file(&self, filename: impl AsRef<OsStr>, user: Option<Arc<User>>) -> PathBuf {
-        match self {
-            Self::Common => Self::get_path_to_common_file(filename),
-            Self::User => user.unwrap().get_path_to_user_file(filename),
-        }
+    fn user_file_path(&self, filename: impl AsRef<OsStr>, user: Arc<User>) -> PathBuf {
+        let mut path = self.user_folder(user);
+
+        path.push(filename.as_ref().to_str().expect("invalid filename").to_string());
+
+        path
+    }
+
+    fn user_folder(&self, user: Arc<User>) -> PathBuf {
+        let mut path = PathBuf::from("storage");
+
+        path.push("uploads");
+
+        path.push("user");
+        path.push(user.username().clone().to_string());
+
+        path
     }
 }
 
@@ -64,28 +94,30 @@ pub struct UserToken {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for UserToken {
-    type Error = &'static str;
+    type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let token_recv = request.headers().get_one("Authorization");
-        if token_recv.borrow().is_none() {
-            return Outcome::Failure((Status::Unauthorized, "token missing"));
-        }
 
-        let token = token_recv.unwrap();
-        if !token.starts_with("Bearer ") || token.len() < 8 {
-            return Outcome::Failure((Status::Unauthorized, "invalid token type"));
-        }
+        request.headers()
+            .get_one("Authorization")
+            .and_then(|token| {
+                if !token.starts_with("Bearer ") || token.len() < 8 {
+                    None
+                }
 
-        let (_, token) = token.split_at(7);
+                Some(token.split_at(7).0)
+            })
+            .and_then(|token| {
+                request.rocket()
+                    .state::<AppState>()
+                    .and_then(|s| Some((token, s)))
+            })
+            .and_then(|(token, state)| {
 
-        let state = request.rocket().state::<AppState>();
+            })
 
-        if state.borrow().is_none() {
-            return Outcome::Failure((Status::Unauthorized, "state missing"));
-        }
 
-        let app_state = state.unwrap();
         let mut tokens = app_state.tokens.write().await;
 
         let user_token = tokens.list.get_key_value(token);
@@ -122,10 +154,7 @@ struct File {
 }
 
 #[get("/files?<scope>&<cursor>")]
-pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) -> Result<Value, Status> {
-
-
-
+pub async fn list(ut: UserToken, scope: Option<FormFileScope>, cursor: Option<u64>) -> Result<Value, Status> {
     Ok(json!({
         "files": files,
         "nextCursor": more.then(|| cursor + MAX_FILES),
@@ -136,7 +165,7 @@ pub async fn list(ut: UserToken, scope: Option<FileScope>, cursor: Option<u64>) 
 #[derive(FromForm, Debug)]
 pub struct DownloadData<'r> {
     filename: &'r str,
-    scope: FileScope,
+    scope: FormFileScope,
 }
 
 #[post("/files/download", data = "<form>")]
@@ -173,11 +202,11 @@ pub fn fetch_files() -> Result<Vec<File>, String> {
         path.push("uploads");
 
         match scope.unwrap_or_default() {
-            FileScope::User => {
+            FormFileScope::User => {
                 path.push("user");
                 path.push(ut.user.username().to_string());
             }
-            FileScope::Common => path.push("common"),
+            FormFileScope::Common => path.push("common"),
         }
 
         path

@@ -19,30 +19,31 @@ mod user;
 mod auth;
 mod files;
 mod db;
+mod shared;
 
 #[catch(404)]
 fn not_found() -> &'static str {
-    "🍆 404 Fucked Out"
+    "🍆 404 Fucking Gone"
 }
 
 #[catch(413)]
 fn payload_too_large() -> &'static str {
-    "🍆 413 Request Too Fucking"
+    "🍆 413 So Fucking Huge"
 }
 
 #[catch(422)]
 fn unprocessable_entity() -> &'static str {
-    "🍆 422 Infucking Request"
+    "🍆 422 Fucked Up Request"
 }
 
 #[catch(401)]
 fn unauthorized() -> &'static str {
-    "🍆 401 Unfucktorized"
+    "🍆 401 Fuck No"
 }
 
 #[catch(400)]
 fn bad_request() -> &'static str {
-    "🍆 400 Fucked-up Request"
+    "🍆 400 So Fucked Up Request"
 }
 
 #[catch(429)]
