@@ -1,5 +1,7 @@
+#![feature(proc_macro_hygiene, decl_macro)]
 #![deny(warnings)]
 #![deny(clippy::all)]
+
 #[macro_use]
 extern crate rocket;
 
@@ -13,6 +15,9 @@ use tokio::sync::RwLock;
 
 use crate::auth::Token;
 use crate::user::{get_users, User};
+
+#[cfg(test)]
+mod test;
 
 mod upload;
 mod user;
@@ -112,8 +117,7 @@ impl AppState {
     }
 }
 
-#[launch]
-fn rocket() -> _ {
+pub fn rocket() -> rocket::Rocket<rocket::Build> {
     env_logger::init();
 
     rocket::build()
@@ -135,4 +139,9 @@ fn rocket() -> _ {
             too_many_requests
         ])
         .mount("/", FileServer::from("public"))
+}
+
+#[launch]
+fn flying_saucepan() -> _ {
+    rocket()
 }
