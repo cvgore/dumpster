@@ -8,6 +8,7 @@ use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::Status;
 use rocket::serde::json::{json, Value};
+use rocket::serde::json::serde_json::json;
 
 use crate::AppState;
 use crate::files::FileScope;
