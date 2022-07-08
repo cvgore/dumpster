@@ -21,37 +21,37 @@ mod files;
 
 #[catch(404)]
 fn not_found() -> &'static str {
-    "🍆 404 Fucked Out"
+    "🍆 404"
 }
 
 #[catch(413)]
 fn payload_too_large() -> &'static str {
-    "🍆 413 Request Too Fucking"
+    "🍆 413"
 }
 
 #[catch(422)]
 fn unprocessable_entity() -> &'static str {
-    "🍆 422 Infucking Request"
+    "🍆 422"
 }
 
 #[catch(401)]
 fn unauthorized() -> &'static str {
-    "🍆 401 Unfucktorized"
+    "🍆 401"
 }
 
 #[catch(400)]
 fn bad_request() -> &'static str {
-    "🍆 400 Fucked-up Request"
+    "🍆 400"
 }
 
 #[catch(429)]
 fn too_many_requests() -> &'static str {
-    "🍆 429 Go Fuck Yourself"
+    "🍆 429"
 }
 
 #[catch(500)]
 fn internal_server_error() -> &'static str {
-    "🍆 500 Internal Server Fucking"
+    "🍆 500"
 }
 
 #[derive(Default)]
